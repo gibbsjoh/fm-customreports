@@ -1,0 +1,105 @@
+<html>
+    <body>
+        <h1>JS Excel Thing</h1>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+
+/**
+ * Converts JSON data to an Excel file using SheetJS.
+ * @param {Array} jsonData - Array of objects each containing 'fieldData' object.
+ * @param {string} fileName - Name of the output Excel file.
+ */
+function jsonToExcel(jsonDataFromFM, fileName = "output.xlsx", columnOrder = null) {
+    const jsonData = JSON.parse(jsonDataFromFM);
+    if (!Array.isArray(jsonData) || jsonData.length === 0) {
+        console.error("Invalid or empty JSON data provided.");
+        return;
+    }
+
+// Convert columnOrder from CR-separated string to array if needed
+    let headers;
+    if (typeof columnOrder === "string") {
+        headers = columnOrder.split(/\r\n|\r|\n/).filter(h => h.trim() !== "");
+    } else if (Array.isArray(columnOrder)) {
+        headers = columnOrder;
+    } else {
+        headers = Object.keys(jsonData[0].fieldData);
+    }
+
+    // Map JSON data to an array of objects with keys ordered by columnOrder
+    const sheetData = jsonData.map(item => {
+        const row = {};
+        headers.forEach(key => {
+            row[key] = item.fieldData[key] !== undefined ? item.fieldData[key] : "";
+        });
+        return row;
+    });
+
+    // Create a new workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(sheetData, { header: headers });
+
+    // Append worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+    // Write Excel file to binary string
+    const binaryString = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+
+    // Convert binary string to base64
+    const base64Excel = btoa(binaryString);
+
+    const fmParameter = {
+        data: base64Excel,
+        file: fileName
+        };
+    
+    const fmParameterString = JSON.stringify(fmParameter);
+
+    console.log(`Excel file '${fileName}' encoded to base64 successfully!`);
+    FileMaker.PerformScript ( "WriteFileToContainer", fmParameterString );
+    return base64Excel;
+
+    console.log(`Excel file '${fileName}' created successfully!`);
+}
+
+
+// //------------------------------------------------------
+// // Example usage with JSON data similar to your context
+// const exampleData = [
+//     {
+//         fieldData: {
+//             Data1: "Test",
+//             Data2: "More Data",
+//             Data3: "So much data!",
+//             "ExampleTable2::Data1": "Subtable Record 1 Data 1",
+//             "ExampleTable2::Data2": "Subtable Record 1 Data 2",
+//             PrimaryKey: "5DC200A6-3769-A343-AAFA-EA607686E37A"
+//         },
+//         modId: "0",
+//         portalData: {},
+//         recordId: "1"
+//     },
+//     {
+//         fieldData: {
+//             Data1: "Test 2",
+//             Data2: "More Data 2",
+//             Data3: "So much data! 2",
+//             "ExampleTable2::Data1": "jhdfasdkljh",
+//             "ExampleTable2::Data2": "dfkjhasdfjkla",
+//             PrimaryKey: "FAF40EA6-9F71-E947-B51D-8887FF4B18DC"
+//         },
+//         modId: "0",
+//         portalData: {},
+//         recordId: "2"
+//     }
+// ];
+
+// // Call the function to create the Excel file
+// jsonToExcel(exampleData, "example.xlsx");
+// //------------------------------------------------------
+ 
+</script>
+</body>
+</html>
